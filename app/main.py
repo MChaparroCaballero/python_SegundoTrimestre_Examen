@@ -2,14 +2,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Annotated
 from decimal import Decimal
+from datetime import datetime
 
-from app.database import fetch_all_productos, fetch_producto_by_id, insert_producto, update_producto, delete_producto
+from app.database import delete_consulta, fetch_all_consultas, fetch_consulta_by_id, insert_consulta, update_consulta
 
 
 app = FastAPI(
-    title="FerreApp API Ing María Chaparro Caballero",
+    title="ConsultasMedicas API Ing María Chaparro Caballero",
     version="1.0.0",
-    description="API REST desacoplada para gestión de productos de ferretería por María Chaparro Caballero - 2 DAW"
+    description="API REST desacoplada para gestión de consultas médicas por María Chaparro Caballero - 2 DAW"
 )
 
 
@@ -17,96 +18,102 @@ app = FastAPI(
 # Modelos Pydantic
 # ========================
 
-class ProductoBase(BaseModel):
-    """Modelo base con validaciones compartidas para Producto."""
-    nombre: Annotated[str, Field(min_length=1, max_length=80)]
-    descripcion: Optional[Annotated[str, Field(max_length=255)]] = None
-    precio: float = Field(ge=0)
-    stock: int = Field(ge=0)
-    categoria: Annotated[str, Field(min_length=1, max_length=50)]
-    codigo_sku: Annotated[str, Field(min_length=1, max_length=20)]
-    activo: bool = True
+class ConsultaBase(BaseModel):
+    """Modelo base con validaciones compartidas para Consulta."""
+    paciente_nombre: Annotated[str, Field(min_length=1, max_length=100)]
+    paciente_dni: Annotated[str, Field(min_length=1, max_length=20)]
+    medico_nombre: Annotated[str, Field(min_length=1, max_length=100)]
+    fecha_consulta: datetime = Field(description="Fecha de la cita")
+    motivo_consulta: Optional[Annotated[str, Field(max_length=255)]]
+    diagnostico: Optional[Annotated[str, Field(max_length=255)]]
+    estado: Annotated[str, Field(min_length=1, max_length=100)]
+    coste: float = Field(ge=0)
+    fecha_creacion: datetime = Field(default_factory=datetime.now)
 
-    @field_validator('nombre', 'categoria')
+    @field_validator('paciente_nombre', 'medico_nombre','paciente_dni', 'motivo_consulta', 'diagnostico', 'estado')
     @classmethod
-    def validar_nombre_categoria(cls, v: str) -> str:
+    def validar_nombre_medico(cls, v: str) -> str:
         """Valida nombre y categoría."""
         if not v or not v.strip():
             raise ValueError('El campo no puede estar vacío')
         return v.strip()
 
-    @field_validator('codigo_sku')
+# Validador para Datetime
+    @field_validator('fecha_consulta', 'fecha_creacion')
     @classmethod
-    def validar_codigo_sku(cls, v: str) -> str:
-        """Valida código SKU."""
-        v = v.strip().upper()
-        if not v:
-            raise ValueError('El SKU no puede estar vacío')
+    def validar_fechas(cls, v: datetime) -> datetime:
+        if v is None:
+            raise ValueError('La fecha no puede estar vacía')
+        # Aquí v ya es un objeto datetime, no un string
+        return v
+    
+    @field_validator('coste')
+    @classmethod
+    def validar_coste(cls, v: float) -> float:
+        """Valida que el coste sea un número válido y no negativo."""
+        if v is None:
+            raise ValueError('El coste no puede estar vacío')
+        
+        # Aunque Field(ge=0) ya lo hace, el validador refuerza la lógica
+        if v < 0:
+            raise ValueError('El coste no puede ser un valor negativo')
+            
         return v
 
-    @field_validator('descripcion')
-    @classmethod
-    def validar_descripcion(cls, v: Optional[str]) -> Optional[str]:
-        """Valida descripción."""
-        if v is None or v.strip() == '':
-            return None
-        return v.strip()
-
-
-class ProductoDB(BaseModel):
+class ConsultaDB(BaseModel):
     """Modelo para lectura desde BD (sin validaciones estrictas para datos históricos)."""
-    id_producto: int
-    nombre: str
-    descripcion: Optional[str] = None
-    precio: float
-    stock: int
-    categoria: str
-    codigo_sku: str
-    activo: bool
+    id: int
+    paciente_nombre: str
+    paciente_dni: str
+    medico_nombre: str
+    fecha_consulta: datetime
+    motivo_consulta: str
+    diagnostico: str
+    estado: str
+    coste: float
+    fecha_creacion: datetime
 
 
-class ProductoCreate(ProductoBase):
-    """Modelo para crear nuevo producto (sin ID)."""
+class ConsultaCreate(ConsultaBase):
+    """Modelo para crear nueva consulta (sin ID)."""
     pass
 
 
-class ProductoUpdate(ProductoBase):
-    """Modelo para actualizar producto (sin ID)."""
+class ConsultaUpdate(ConsultaBase):
+    """Modelo para actualizar consulta (sin ID)."""
     pass
 
 
-class Producto(ProductoBase):
-    """Modelo completo de Producto (con ID y validaciones)."""
-    id_producto: int
+class Consulta(ConsultaBase):
+    """Modelo completo de Consulta (con ID y validaciones)."""
+    id: int
 
 
 # ========================
 # Funciones Helper
 # ========================
 
-def map_rows_to_productos(rows: List[dict]) -> List[ProductoDB]:
+def map_rows_to_consultas(rows: List[dict]) -> List[ConsultaDB]:
     """
-    Convierte las filas del SELECT * FROM producto (dict) 
-    en objetos ProductoDB. Maneja conversión de tipos incompatibles
+    Convierte las filas del SELECT * FROM consulta (dict) 
+    en objetos ConsultaDB. Maneja conversión de tipos incompatibles
     como Decimal → float.
     """
-    productos_db = []
+    consultas_db = []
     for row in rows:
-        # Preparar datos para ProductoDB
-        producto_data = dict(row)
+        # Preparar datos para ConsultaDB
+        consulta_data = dict(row)
         
         # Convertir Decimal a float si es necesario
-        if isinstance(producto_data.get("precio"), Decimal):
-            producto_data["precio"] = float(producto_data["precio"])
+        if isinstance(consulta_data.get("coste"), Decimal):
+            consulta_data["coste"] = float(consulta_data["coste"])
         
-        # Garantizar booleano para activo
-        producto_data["activo"] = bool(producto_data.get("activo", False))
-        
-        # Crear objeto ProductoDB desempacando el diccionario
-        producto = ProductoDB(**producto_data)
-        productos_db.append(producto)
+              
+        # Crear objeto ConsultaDB desempacando el diccionario
+        consulta = ConsultaDB(**consulta_data)
+        consultas_db.append(consulta)
 
-    return productos_db
+    return consultas_db
 
 # ========================
 # Endpoints
@@ -115,7 +122,7 @@ def map_rows_to_productos(rows: List[dict]) -> List[ProductoDB]:
 def root():
     """Ruta raíz - Bienvenida a la API."""
     return {
-        "message": "Bienvenido a FerreApp API by María Chaparro Caballero - 2 DAW",
+        "message": "Bienvenido a ConsultasApp API by María Chaparro Caballero - 2 DAW",
         "version": "1.0.0",
         "docs": "/docs",
         "redoc": "/redoc"
@@ -126,175 +133,180 @@ def ping():
     """Endpoint de prueba."""
     return {"message": "pong"}
 
-@app.get("/productos", response_model=List[Producto])
-def listar_productos():
+@app.get("/consultas", response_model=List[Consulta])
+def listar_consultas():
     """
     Devuelve la lista de todos los productos desde la base de datos.
     
     - Obtiene datos raw de MySQL
-    - Mapea a ProductoDB (convierte tipos incompatibles)
+    - Mapea a ConsultaDB (convierte tipos incompatibles)
     - Valida estructura con Pydantic
-    - Retorna lista de Productos
+    - Retorna lista de Consultas
     """
     # 1. Obtener datos desde MySQL
-    rows = fetch_all_productos()
+    rows = fetch_all_consultas()
 
-    # 2. Mapear a ProductoDB (conversión de tipos)
-    productos_db = map_rows_to_productos(rows)
+    # 2. Mapear a ConsultaDB (conversión de tipos)
+    consultas_db = map_rows_to_consultas(rows)
 
-    # 3. Retornar como Producto (con validación de Pydantic)
-    return productos_db
+    # 3. Retornar como Consulta (con validación de Pydantic)
+    return consultas_db
 
-@app.get("/productos/{producto_id}", response_model=Producto)
-def obtener_producto(producto_id: int):
+@app.get("/consulta/{consulta_id}", response_model=Consulta)
+def obtener_consulta(consulta_id: int):
     """
-    Devuelve un producto específico por su ID.
+    Devuelve una consulta específica por su ID.
     
     - Obtiene datos raw de MySQL
-    - Mapea a ProductoDB (convierte tipos incompatibles)
+    - Mapea a ConsultaDB (convierte tipos incompatibles)
     - Valida estructura con Pydantic
-    - Retorna el Producto o lanza HTTPException 404 si no existe
+    - Retorna la Consulta o lanza HTTPException 404 si no existe
     """
     # 1. Obtener datos desde MySQL
-    row = fetch_producto_by_id(producto_id)
+    row = fetch_consulta_by_id(consulta_id)
     
     # 2. Validar que el producto existe
     if not row:
         raise HTTPException(
             status_code=404,
-            detail=f"Producto con ID {producto_id} no encontrado"
+            detail=f"Consulta con ID {consulta_id} no encontrada"
         )
     
-    # 3. Mapear a ProductoDB (conversión de tipos)
-    productos_db = map_rows_to_productos([row])
+    # 3. Mapear a ConsultaDB (conversión de tipos)
+    consultas_db = map_rows_to_consultas([row])
     
     # 4. Retornar el primer (y único) elemento
-    return productos_db[0]
+    return consultas_db[0]
 
 
-@app.post("/productos", response_model=Producto, status_code=201)
-def crear_producto(producto: ProductoCreate):
+@app.post("/consultas", response_model=Consulta, status_code=201)
+def crear_consulta(consulta: ConsultaCreate):
     """
-    Crea un nuevo producto en la base de datos.
+    Crea una nueva consulta en la base de datos.
     
-    - Valida datos con Pydantic (ProductoCreate)
+    - Valida datos con Pydantic (ConsultaCreate)
     - Inserta en MySQL
-    - Retorna el producto creado con ID asignado
+    - Retorna la consulta creada con ID asignado
     """
-    # 1. Insertar el producto en MySQL (retorna ID)
-    nuevo_id = insert_producto(
-        nombre=producto.nombre,
-        descripcion=producto.descripcion,
-        precio=producto.precio,
-        stock=producto.stock,
-        categoria=producto.categoria,
-        codigo_sku=producto.codigo_sku,
-        activo=producto.activo
+    # 1. Insertar la consulta en MySQL (retorna ID)
+    nuevo_id = insert_consulta(
+        paciente_nombre=consulta.paciente_nombre,
+        paciente_dni=consulta.paciente_dni,
+        medico_nombre=consulta.medico_nombre,
+        fecha_consulta=consulta.fecha_consulta,
+        motivo_consulta=consulta.motivo_consulta,
+        diagnostico=consulta.diagnostico,
+        estado=consulta.estado,
+        coste=consulta.coste,
+        fecha_creacion=consulta.fecha_creacion
     )
     
     # 2. Validar que la inserción fue exitosa
     if not nuevo_id or nuevo_id == 0:
         raise HTTPException(
             status_code=500,
-            detail="Error al insertar el producto en la base de datos"
+            detail="Error al insertar la consulta en la base de datos"
         )
     
-    # 3. Recuperar el producto creado desde la BD
-    row = fetch_producto_by_id(nuevo_id)
+    # 3. Recuperar la consulta creada desde la BD
+    row = fetch_consulta_by_id(nuevo_id)
     
     if not row:
         raise HTTPException(
             status_code=500,
-            detail="Error al recuperar el producto recién creado"
+            detail="Error al recuperar la consulta recién creada"
         )
     
     # 4. Mapear y retornar
-    productos_db = map_rows_to_productos([row])
-    return productos_db[0]
-
-
-@app.put("/productos/{producto_id}", response_model=Producto)
-def actualizar_producto(producto_id: int, producto: ProductoUpdate):
-    """
-    Actualiza un producto existente en la base de datos.
+    consultas_db = map_rows_to_consultas([row])
+    return consultas_db[0]
     
-    - Valida que el producto existe (404 si no)
-    - Valida datos con Pydantic (ProductoUpdate)
-    - Actualiza en MySQL
-    - Retorna el producto actualizado
+
+
+@app.put("/consultas/{consulta_id}", response_model=Consulta)
+def actualizar_consulta(consulta_id: int, consulta: ConsultaUpdate):
     """
-    # 1. Validar que el producto existe
-    row_existente = fetch_producto_by_id(producto_id)
+    Actualiza una consulta existente en la base de datos.
+    
+    - Valida que la consulta existe (404 si no)
+    - Valida datos con Pydantic (ConsultaUpdate)
+    - Actualiza en MySQL
+    - Retorna la consulta actualizada
+    """
+    # 1. Validar que la consulta existe
+    row_existente = fetch_consulta_by_id(consulta_id)
     
     if not row_existente:
         raise HTTPException(
             status_code=404,
-            detail=f"Producto con ID {producto_id} no encontrado"
+            detail=f"Consulta con ID {consulta_id} no encontrada"
         )
     
-    # 2. Actualizar el producto en MySQL
-    actualizado = update_producto(
-        producto_id=producto_id,
-        nombre=producto.nombre,
-        descripcion=producto.descripcion,
-        precio=producto.precio,
-        stock=producto.stock,
-        categoria=producto.categoria,
-        codigo_sku=producto.codigo_sku,
-        activo=producto.activo
+    # 2. Actualizar la consulta en MySQL
+    actualizado = update_consulta(
+        consulta_id=consulta_id,
+        paciente_nombre=consulta.paciente_nombre,
+        paciente_dni=consulta.paciente_dni,
+        medico_nombre=consulta.medico_nombre,
+        fecha_consulta=consulta.fecha_consulta,
+        motivo_consulta=consulta.motivo_consulta,
+        diagnostico=consulta.diagnostico,
+        estado=consulta.estado,
+        coste=consulta.coste,
+        fecha_creacion=consulta.fecha_creacion
     )
     
     # 3. Validar que la actualización fue exitosa
     if not actualizado:
         raise HTTPException(
             status_code=500,
-            detail="Error al actualizar el producto en la base de datos"
+            detail="Error al actualizar la consulta en la base de datos"
         )
     
-    # 4. Recuperar el producto actualizado desde la BD
-    row_actualizado = fetch_producto_by_id(producto_id)
+    # 4. Recuperar la consulta actualizada desde la BD
+    row_actualizado = fetch_consulta_by_id(consulta_id)
     
     if not row_actualizado:
         raise HTTPException(
             status_code=500,
-            detail="Error al recuperar el producto actualizado"
+            detail="Error al recuperar la consulta actualizada"
         )
     
     # 5. Mapear y retornar
-    productos_db = map_rows_to_productos([row_actualizado])
-    return productos_db[0]
+    consultas_db = map_rows_to_consultas([row_actualizado])
+    return consultas_db[0]
 
 
-@app.delete("/productos/{producto_id}", status_code=200)
-def eliminar_producto(producto_id: int):
+@app.delete("/consultas/{consulta_id}", status_code=200)
+def eliminar_consulta(consulta_id: int):
     """
-    Elimina un producto existente de la base de datos.
+    Elimina una consulta existente de la base de datos.
     
-    - Valida que el producto existe (404 si no)
+    - Valida que la consulta existe (404 si no)
     - Elimina de MySQL
     - Retorna mensaje de éxito
     """
-    # 1. Validar que el producto existe
-    row_existente = fetch_producto_by_id(producto_id)
+    # 1. Validar que la consulta existe
+    row_existente = fetch_consulta_by_id(consulta_id)
     
     if not row_existente:
         raise HTTPException(
             status_code=404,
-            detail=f"Producto con ID {producto_id} no encontrado"
+            detail=f"Consulta con ID {consulta_id} no encontrada"
         )
     
-    # 2. Eliminar el producto de MySQL
-    eliminado = delete_producto(producto_id)
+    # 2. Eliminar la consulta de MySQL
+    eliminado = delete_consulta(consulta_id)
     
     # 3. Validar que la eliminación fue exitosa
     if not eliminado:
         raise HTTPException(
             status_code=500,
-            detail="Error al eliminar el producto de la base de datos"
+            detail="Error al eliminar la consulta de la base de datos"
         )
     
     # 4. Retornar mensaje de éxito
     return {
-        "mensaje": "Producto eliminado exitosamente",
-        "id_producto": producto_id
+        "mensaje": "Consulta eliminada exitosamente",
+        "id_consulta": consulta_id
     }

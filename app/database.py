@@ -12,14 +12,14 @@ def get_connection():
         host=os.getenv("DB_HOST", "localhost"),        # <— corregidos nombres
         user=os.getenv("DB_USER", "root"),
         password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "ferreapp"),
+        database=os.getenv("DB_NAME", "ConsultasApp"),
         port=int(os.getenv("DB_PORT", "3306")),
         charset="utf8mb4"
     )
 
-def fetch_all_productos() -> List[Dict[str, Any]]:
+def fetch_all_consultas() -> List[Dict[str, Any]]:
     """
-    Ejecuta SELECT * FROM producto y devuelve una lista de dicts.
+    Ejecuta SELECT * FROM consulta_medica y devuelve una lista de dicts.
     """
     conn = None
     try:
@@ -33,15 +33,17 @@ def fetch_all_productos() -> List[Dict[str, Any]]:
             cur.execute(
                 """
                 SELECT
-                    id_producto,
-                    nombre,
-                    descripcion,
-                    precio,
-                    stock,
-                    categoria,
-                    codigo_sku,
-                    activo
-                FROM producto;
+                    id,
+                    paciente_nombre,
+                    paciente_dni,
+                    medico_nombre,
+                    fecha_consulta,
+                    motivo_consulta,
+                    diagnostico,
+                    estado,
+                    coste,
+                    fecha_creacion
+                FROM consulta_medica;
                 """
             )
 
@@ -60,18 +62,20 @@ def fetch_all_productos() -> List[Dict[str, Any]]:
             conn.close()
 
 
-def insert_producto(
-    nombre: str,
-    descripcion: str | None,
-    precio: float,
-    stock: int,
-    categoria: str,
-    codigo_sku: str,
-    activo: bool = True
+def insert_consulta(
+    paciente_nombre: str,
+    paciente_dni: str,
+    medico_nombre: str,
+    fecha_consulta: str,
+    motivo_consulta: str,
+    diagnostico: str,
+    estado: str,
+    coste: float,
+    fecha_creacion: str
 ) -> int:
     """
-    Inserta un nuevo producto en la base de datos.
-    Retorna el ID del producto insertado.
+    Inserta una nueva consulta médica en la base de datos.
+    Retorna el ID de la consulta insertada.
     """
     conn = None
     try:
@@ -80,18 +84,20 @@ def insert_producto(
         try:
             cur.execute(
                 """
-                INSERT INTO producto
-                    (nombre, descripcion, precio, stock, categoria, codigo_sku, activo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO consulta_medica
+                    (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, coste, fecha_creacion)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    nombre,
-                    descripcion,
-                    precio,
-                    stock,
-                    categoria,
-                    codigo_sku,
-                    activo
+                    paciente_nombre,
+                    paciente_dni,
+                    medico_nombre,
+                    fecha_consulta,
+                    motivo_consulta,
+                    diagnostico,
+                    estado,
+                    coste,
+                    fecha_creacion
                 )
             )
             conn.commit()
@@ -103,9 +109,10 @@ def insert_producto(
             conn.close()
 
 
-def delete_producto(producto_id: int) -> bool:
+
+def delete_consulta(consulta_id: int) -> bool:
     """
-    Elimina un producto de la base de datos por su ID.
+    Elimina una consulta médica de la base de datos por su ID.
     Retorna True si se eliminó correctamente, False si no se encontró.
     """
     conn = None
@@ -114,8 +121,8 @@ def delete_producto(producto_id: int) -> bool:
         cur = conn.cursor()
         try:
             cur.execute(
-                "DELETE FROM producto WHERE id_producto = %s",
-                (producto_id,)
+                "DELETE FROM consulta_medica WHERE id = %s",
+                (consulta_id,)
             )
             conn.commit()
             return cur.rowcount > 0
@@ -126,11 +133,10 @@ def delete_producto(producto_id: int) -> bool:
             conn.close()
 
 
-
-def fetch_producto_by_id(producto_id: int) -> Dict[str, Any] | None:
+def fetch_consulta_by_id(consulta_id: int) -> Dict[str, Any] | None:
     """
-    Obtiene un producto por su ID.
-    Retorna un dict con los datos del producto o None si no existe.
+    Obtiene una consulta médica por su ID.
+    Retorna un dict con los datos de la consulta o None si no existe.
     """
     conn = None
     try:
@@ -144,18 +150,20 @@ def fetch_producto_by_id(producto_id: int) -> Dict[str, Any] | None:
             cur.execute(
                 """
                 SELECT
-                    id_producto,
-                    nombre,
-                    descripcion,
-                    precio,
-                    stock,
-                    categoria,
-                    codigo_sku,
-                    activo
-                FROM producto
-                WHERE id_producto = %s
+                   id,
+                    paciente_nombre,
+                    paciente_dni,
+                    medico_nombre,
+                    fecha_consulta,
+                    motivo_consulta,
+                    diagnostico,
+                    estado,
+                    coste,
+                    fecha_creacion
+                FROM consulta_medica
+                WHERE id = %s
                 """,
-                (producto_id,)
+                (consulta_id,)
             )
             result = cur.fetchone()
             return dict(result) if result else None
@@ -166,18 +174,20 @@ def fetch_producto_by_id(producto_id: int) -> Dict[str, Any] | None:
             conn.close()
 
 
-def update_producto(
-    producto_id: int,
-    nombre: str,
-    descripcion: str | None,
-    precio: float,
-    stock: int,
-    categoria: str,
-    codigo_sku: str,
-    activo: bool
+def update_consulta(
+    consulta_id: int,
+    paciente_nombre: str,
+    paciente_dni: str,
+    medico_nombre: str,
+    fecha_consulta: str,
+    motivo_consulta: str,
+    diagnostico: str,
+    estado: str,
+    coste: float,
+    fecha_creacion: str
 ) -> bool:
     """
-    Actualiza los datos de un producto existente.
+    Actualiza los datos de una consulta médica existente.
     Retorna True si se actualizó correctamente, False si no se encontró.
     """
     conn = None
@@ -187,26 +197,32 @@ def update_producto(
         try:
             cur.execute(
                 """
-                UPDATE producto
+                UPDATE consulta_medica
                 SET
-                    nombre = %s,
-                    descripcion = %s,
-                    precio = %s,
-                    stock = %s,
-                    categoria = %s,
-                    codigo_sku = %s,
-                    activo = %s
-                WHERE id_producto = %s
+                   id= %s,
+                    paciente_nombre = %s,
+                    paciente_dni = %s,
+                    medico_nombre = %s,
+                    fecha_consulta = %s,
+                    motivo_consulta = %s,
+                    diagnostico = %s,
+                    estado = %s,
+                    coste = %s,
+                    fecha_creacion = %s
+                WHERE id = %s
                 """,
                 (
-                    nombre,
-                    descripcion,
-                    precio,
-                    stock,
-                    categoria,
-                    codigo_sku,
-                    activo,
-                    producto_id
+                    consulta_id,
+                    paciente_nombre,
+                    paciente_dni,
+                    medico_nombre,
+                    fecha_consulta,
+                    motivo_consulta,
+                    diagnostico,
+                    estado,
+                    coste,
+                    fecha_creacion,
+                    consulta_id
                 )
             )
             conn.commit()
