@@ -43,7 +43,7 @@ CREATE TABLE `consultas` (
   `diagnostico` varchar(255) DEFAULT NULL,
   `estado` enum('pendiente','en proceso','finalizada','cancelada') NOT NULL DEFAULT 'pendiente',
   `costo` decimal(10,2) NOT NULL,
-  `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
+  `creado_en` timestamp DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
