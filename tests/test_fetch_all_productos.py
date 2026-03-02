@@ -5,16 +5,16 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.database import fetch_all_productos
+from app.database import fetch_all_consultas
 
 if __name__ == "__main__":
     try:
-        productos = fetch_all_productos()
-        print(f'✅ Productos encontrados: {len(productos)}')
-        for p in productos:
-            print(p)
+        consultas = fetch_all_consultas()
+        print(f'✅ Consultas encontradas: {len(consultas)}')
+        for c in consultas:
+            print(c)
     except Exception as e:
-        print('❌ Error al obtener productos →', e)
+        print('❌ Error al obtener consultas →', e)
 
 # ===== EJECUCIÓN DESDE CMD =====
-# python tests/test_fetch_all_productos.py
+# python tests/test_fetch_all_consultas.py

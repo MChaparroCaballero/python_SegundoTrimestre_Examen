@@ -5,22 +5,24 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from app.database import insert_producto
+from app.database import insert_consulta
 
 if __name__ == "__main__":
     try:
-        nuevo_id = insert_producto(
-            nombre='Llave Allen 6mm',
-            descripcion='Llave Allen de acero 6mm',
-            precio=2.50,
-            stock=100,
-            categoria='Herramientas',
-            codigo_sku='ALLEN-6MM'
+        nuevo_id = insert_consulta(
+            paciente_nombre='Juan Pérez',
+            paciente_dni='12345678Z',
+            medico_nombre='Dr. García',
+            fecha_consulta='2025-01-15 10:30:00',
+            motivo_consulta='Revisión médica general',
+            diagnostico='Paciente en buen estado general',
+            estado='completada',
+            costo=50.00
         )
 
-        print('🆔 ID producto insertado →', nuevo_id)
+        print('🆔 ID consulta insertada →', nuevo_id)
     except Exception as e:
-        print('❌ Error al insertar producto →', e)
+        print('❌ Error al insertar consulta →', e)
 
 # ===== EJECUCIÓN DESDE CMD =====
-# python tests/test_insert_producto.py
+# python tests/test_insert_consulta.py

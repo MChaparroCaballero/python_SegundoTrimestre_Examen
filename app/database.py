@@ -12,14 +12,14 @@ def get_connection():
         host=os.getenv("DB_HOST", "localhost"),        # <— corregidos nombres
         user=os.getenv("DB_USER", "root"),
         password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "ConsultasApp"),
+        database=os.getenv("DB_NAME", "ConsultasMedicasApp"),
         port=int(os.getenv("DB_PORT", "3306")),
         charset="utf8mb4"
     )
 
 def fetch_all_consultas() -> List[Dict[str, Any]]:
     """
-    Ejecuta SELECT * FROM consulta_medica y devuelve una lista de dicts.
+    Ejecuta SELECT * FROM consultas y devuelve una lista de dicts.
     """
     conn = None
     try:
@@ -41,9 +41,9 @@ def fetch_all_consultas() -> List[Dict[str, Any]]:
                     motivo_consulta,
                     diagnostico,
                     estado,
-                    coste,
-                    fecha_creacion
-                FROM consulta_medica;
+                    costo,
+                    creado_en
+                FROM consultas;
                 """
             )
 
@@ -70,8 +70,8 @@ def insert_consulta(
     motivo_consulta: str,
     diagnostico: str,
     estado: str,
-    coste: float,
-    fecha_creacion: str
+    costo: float,
+    creado_en: str
 ) -> int:
     """
     Inserta una nueva consulta médica en la base de datos.
@@ -84,8 +84,8 @@ def insert_consulta(
         try:
             cur.execute(
                 """
-                INSERT INTO consulta_medica
-                    (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, coste, fecha_creacion)
+                INSERT INTO consultas
+                    (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, costo, creado_en)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
@@ -96,8 +96,8 @@ def insert_consulta(
                     motivo_consulta,
                     diagnostico,
                     estado,
-                    coste,
-                    fecha_creacion
+                    costo,
+                    creado_en
                 )
             )
             conn.commit()
@@ -121,7 +121,7 @@ def delete_consulta(consulta_id: int) -> bool:
         cur = conn.cursor()
         try:
             cur.execute(
-                "DELETE FROM consulta_medica WHERE id = %s",
+                "DELETE FROM consultas WHERE id = %s",
                 (consulta_id,)
             )
             conn.commit()
@@ -158,9 +158,9 @@ def fetch_consulta_by_id(consulta_id: int) -> Dict[str, Any] | None:
                     motivo_consulta,
                     diagnostico,
                     estado,
-                    coste,
-                    fecha_creacion
-                FROM consulta_medica
+                    costo,
+                    creado_en
+                FROM consultas
                 WHERE id = %s
                 """,
                 (consulta_id,)
@@ -183,8 +183,8 @@ def update_consulta(
     motivo_consulta: str,
     diagnostico: str,
     estado: str,
-    coste: float,
-    fecha_creacion: str
+    costo: float,
+    creado_en: str
 ) -> bool:
     """
     Actualiza los datos de una consulta médica existente.
@@ -197,7 +197,7 @@ def update_consulta(
         try:
             cur.execute(
                 """
-                UPDATE consulta_medica
+                UPDATE consultas
                 SET
                    id= %s,
                     paciente_nombre = %s,
@@ -207,8 +207,8 @@ def update_consulta(
                     motivo_consulta = %s,
                     diagnostico = %s,
                     estado = %s,
-                    coste = %s,
-                    fecha_creacion = %s
+                    costo = %s,
+                    creado_en = %s
                 WHERE id = %s
                 """,
                 (
@@ -220,8 +220,8 @@ def update_consulta(
                     motivo_consulta,
                     diagnostico,
                     estado,
-                    coste,
-                    fecha_creacion,
+                    costo,
+                    creado_en,
                     consulta_id
                 )
             )

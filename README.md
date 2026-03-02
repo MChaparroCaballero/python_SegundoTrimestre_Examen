@@ -31,7 +31,7 @@ Se ha desarrollado **ConsultasApp**, una API REST que centraliza la gestión de 
 
 Digitalizar el flujo de trabajo médico bajo un estándar **CRUD**, asegurando que:
 - Los datos del paciente sean únicos (DNI).
-- Los estados de la consulta sean consistentes (`pendiente`, `en_curso`, `finalizada`, `cancelada`).
+- Los estados de la consulta sean consistentes (`pendiente`, `en proceso`, `finalizada`, `cancelada`).
 - El coste de la consulta nunca sea negativo.
 - La trazabilidad temporal (fechas de consulta y creación) sea automática.
 
@@ -46,18 +46,19 @@ La base de datos utiliza `utf8mb4` para soportar caracteres especiales y tildes 
 CREATE DATABASE IF NOT EXISTS ConsultasApp CHARACTER SET utf8mb4;
 USE ConsultasApp;
 
-CREATE TABLE consulta_medica (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  paciente_nombre VARCHAR(100) NOT NULL,
-  paciente_dni VARCHAR(20) NOT NULL UNIQUE,
-  medico_nombre VARCHAR(100) NOT NULL,
-  fecha_consulta DATETIME NOT NULL,
-  motivo_consulta VARCHAR(255) NULL,
-  diagnostico VARCHAR(255) NOT NULL,
-  estado ENUM('pendiente', 'en_curso', 'finalizada', 'cancelada') NOT NULL DEFAULT 'pendiente',
-  coste DECIMAL(8,2) NOT NULL,
-  fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE `consultas` (
+  `id` int(11) NOT NULL,
+  `paciente_nombre` varchar(100) NOT NULL,
+  `paciente_dni` varchar(9) NOT NULL,
+  `medico_nombre` varchar(100) NOT NULL,
+  `fecha_consulta` datetime NOT NULL,
+  `motivo_consulta` varchar(255) NOT NULL,
+  `diagnostico` varchar(255) DEFAULT NULL,
+  `estado` enum('pendiente','en proceso','finalizada','cancelada') NOT NULL DEFAULT 'pendiente',
+  `costo` decimal(10,2) NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
 );
+
 ## 🏗️ Arquitectura y Conceptos
 
 La API implementa una **Arquitectura en Capas** para separar las responsabilidades y facilitar el mantenimiento del código:
@@ -65,7 +66,7 @@ La API implementa una **Arquitectura en Capas** para separar las responsabilidad
 
 
 * **Capa de Presentación (FastAPI):** Gestiona los métodos HTTP y las rutas en `main.py`. Se encarga de recibir las peticiones del cliente y devolver las respuestas.
-* **Capa de Validación (Pydantic):** Utiliza los modelos `ConsultaBase`, `ConsultaCreate` y `ConsultaUpdate` para asegurar que los datos cumplan las reglas de negocio antes de interactuar con la base de datos.
+* **Capa de Validación (Pydantic):** Utiliza los modelos `ConsultaBase`, `ConsultaBD` , `ConsultaCreate` y `ConsultaUpdate` para asegurar que los datos cumplan las reglas de negocio antes de interactuar con la base de datos.
 * **Capa de Datos (Repository Pattern):** Encapsula las funciones en `database.py` que ejecutan el SQL utilizando `mysql-connector-python`, abstrayendo la complejidad de las consultas al resto de la aplicación.
 
 ---
@@ -104,9 +105,9 @@ pip install -r requirements.txt```
 ```Crea un archivo llamado .env en la raíz del proyecto con el siguiente contenido:
 
 DB_HOST=localhost
-DB_USER=consultasappMaria
-DB_PASSWORD=consultasapp123
-DB_NAME=ConsultasApp```
+DB_USER=tu usuario
+DB_PASSWORD=tu password
+DB_NAME=ConsultasMedicasApp```
 
 ###3. Ejecutar la API
 ```Desde la terminal, utiliza el siguiente comando para iniciar el servidor en modo desarrollo:
@@ -116,7 +117,7 @@ uvicorn app.main:app --reload```
 
 ## 🔌 Detalle de Endpoints de la API
 
-La API de **ConsultasApp** implementa los siguientes endpoints siguiendo los estándares RESTful:
+La API de **ConsultasMedicas** implementa los siguientes endpoints siguiendo los estándares RESTful:
 
 ### 🏠 General
 * **`GET /`**: Ruta raíz que devuelve un mensaje de bienvenida, la versión actual de la API y enlaces directos a la documentación interactiva (`/docs` y `/redoc`).
@@ -155,7 +156,7 @@ Para registrar una consulta (**POST**), el cuerpo del mensaje debe seguir esta e
   "paciente_nombre": "Juan Pérez",
   "paciente_dni": "12345678A",
   "medico_nombre": "Dr. García",
-  "fecha_consulta": "2024-03-01T10:30:00",
+  "fecha_consulta": "2024-03-01 10:30:00",
   "motivo_consulta": "Revisión anual",
   "diagnostico": "Paciente estable",
   "estado": "pendiente",
@@ -164,15 +165,23 @@ Para registrar una consulta (**POST**), el cuerpo del mensaje debe seguir esta e
 ```
 ## ✅ Validaciones Pydantic
 
-Se han implementado reglas estrictas mediante **Pydantic V2** para garantizar la integridad de la historia clínica y evitar datos inconsistentes en la base de datos:
+Se describen a continuación las validaciones actuales implementadas con **Pydantic V2** (modelo `ConsultaBase` en `app/main.py`):
 
+- **Restricciones de campo (Field):**
+  - `paciente_nombre`: `min_length=1`, `max_length=100`, patrón `^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$`.
+  - `paciente_dni`: `min_length=1`, `max_length=9`, patrón `^\d{8}[A-Za-z]$`.
+  - `medico_nombre`: `min_length=1`, `max_length=100`, patrón `^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s\.]+$`.
+  - `motivo_consulta`: `min_length=1`, `max_length=255`.
+  - `diagnostico`: opcional, `max_length=255`.
+  - `estado`: `default="pendiente"`, `max_length=100`.
+  - `costo`: `Field(ge=0)` (no negativo) y además validado estrictamente por validador.
+  - `fecha_consulta`: `datetime` con descripción y validación de formato.
 
+- **Validadores personalizados (`@field_validator`):**
+  - `validar_no_nulo_ni_vacio` (mode='before'): bloquea `None` y cadenas vacías para campos críticos (`paciente_nombre`, `paciente_dni`, `medico_nombre`, `fecha_consulta`, `motivo_consulta`, `estado`, `costo`).
+  - `limpiar_y_validar_sin_numeros`: hace `strip()` y rechaza cualquier valor que contenga dígitos en `paciente_nombre`, `medico_nombre` y `motivo_consulta`.
+  - `validar_formato_fecha` (mode='before'): si se recibe una cadena la parsea obligatoriamente con el formato `YYYY-MM-DD HH:MM:SS`, devolviendo un `datetime` o lanzando error en caso contrario.
+  - `limpiar_y_validar_dni`: `strip()` y `upper()`, y validad con regex `^[0-9]{8}[A-Z]$` (ej: `12345678Z`).
+  - `validar_costo_estricto` (mode='before'): intenta convertir a número (float), rechaza valores no numéricos y prohíbe valores negativos.
 
-* **Validación de Texto:** * Uso de `@field_validator` para aplicar `.strip()` automáticamente a nombres y diagnósticos, eliminando espacios accidentales al inicio o final.
-    * Restricción de `min_length=1` para asegurar que ningún campo obligatorio sea enviado como una cadena vacía.
-
-* **Validación de Coste:** * Restricción matemática mediante `Field(ge=0)`, lo que garantiza que el coste de la consulta sea siempre **mayor o igual a cero**, evitando errores de facturación negativos.
-
-* **Validación de Fechas:** * Procesamiento mediante objetos `datetime` nativos. Esto asegura la compatibilidad total con el formato **ISO 8601** y evita errores de formato al insertar datos en las columnas `DATETIME` y `TIMESTAMP` de MySQL.
-
-* **Validación de Estados:** * Control de flujo mediante tipos enumerados que solo permiten los estados definidos en la base de datos: `pendiente`, `en_curso`, `finalizada` o `cancelada`.
+Estas reglas están definidas en `ConsultaBase` y heredadas por `ConsultaCreate` y `ConsultaUpdate`, garantizando que tanto creación como actualización cumplan las mismas restricciones.
