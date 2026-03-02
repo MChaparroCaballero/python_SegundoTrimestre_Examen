@@ -53,7 +53,7 @@ CREATE TABLE `consultas` (
 INSERT INTO `consultas` (`id`, `paciente_nombre`, `paciente_dni`, `medico_nombre`, `fecha_consulta`, `motivo_consulta`, `diagnostico`, `estado`, `costo`, `creado_en`) VALUES
 (1, 'Juan Pérez', '12345678A', 'Dr. García', '2024-01-15 10:30:00', 'Dolor de cabeza persistente', 'Migraña tensional', 'finalizada', 45.00, '2026-03-02 11:56:57'),
 (2, 'María López', '87654321B', 'Dr. Martínez', '2024-01-16 14:15:00', 'Dolor abdominal', 'Inflamación estomacal leve', 'finalizada', 35.50, '2026-03-02 11:56:57'),
-(3, 'Carlos Rodríguez', '98765432C', 'Dr. Fernández', '2024-01-17 11:45:00', 'Dolor de espalda crónico', 'Lumbalgia por mala postura', '', 65.75, '2026-03-02 11:56:57'),
+(3, 'Carlos Rodríguez', '98765432C', 'Dr. Fernández', '2024-01-17 11:45:00', 'Dolor de espalda crónico', 'Lumbalgia por mala postura', 'pendiente', 65.75, '2026-03-02 11:56:57'),
 (4, 'Ana Gómez', '43218765D', 'Dr. López', '2024-01-18 09:20:00', 'Fiebre y tos persistente', 'Resfriado común con posible infección respiratoria leve.', 'pendiente', 38.99, '2026-03-02 11:56:57');
 
 --
