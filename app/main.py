@@ -31,6 +31,8 @@ class ConsultaBase(BaseModel):
     costo: float = Field(ge=0)
     creado_en: Optional[datetime] = Field(default_factory=datetime.now)
 
+    # --- porque hacemos creado_en opcional? para que en swagger no tenga el usuario que poner la fecha de creacion en un formato especifico, lo hace el sistema ---
+
     # --- VALIDADOR PARA EVITAR NULOS Y VACÍOS EN TODOS LOS CAMPOS ---
     @field_validator(
         'paciente_nombre', 'paciente_dni', 'medico_nombre', 
