@@ -30,8 +30,6 @@ class ConsultaBase(BaseModel):
     estado: Annotated[str, Field(default="pendiente", max_length=100)]
     costo: float = Field(ge=0)
 
-    # --- porque hacemos creado_en opcional? para que en swagger no tenga el usuario que poner la fecha de creacion en un formato especifico, lo hace el sistema ---
-
     # --- VALIDADOR PARA EVITAR NULOS Y VACÍOS EN TODOS LOS CAMPOS ---
     @field_validator(
         'paciente_nombre', 'paciente_dni', 'medico_nombre', 

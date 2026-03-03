@@ -36,7 +36,7 @@ USE ConsultasMedicasApp;
 CREATE TABLE `consultas` (
   `id` int(11) NOT NULL,
   `paciente_nombre` varchar(100) NOT NULL,
-  `paciente_dni` varchar(9) NOT NULL UNIQUE,
+  `paciente_dni` varchar(9) NOT NULL,
   `medico_nombre` varchar(100) NOT NULL,
   `fecha_consulta` datetime NOT NULL,
   `motivo_consulta` varchar(255) NOT NULL,
