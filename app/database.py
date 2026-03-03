@@ -70,8 +70,7 @@ def insert_consulta(
     motivo_consulta: str,
     diagnostico: str,
     estado: str,
-    costo: float,
-    creado_en: str
+    costo: float
 ) -> int:
     """
     Inserta una nueva consulta médica en la base de datos.
@@ -85,8 +84,8 @@ def insert_consulta(
             cur.execute(
                 """
                 INSERT INTO consultas
-                    (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, costo, creado_en)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, costo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     paciente_nombre,
@@ -96,8 +95,7 @@ def insert_consulta(
                     motivo_consulta,
                     diagnostico,
                     estado,
-                    costo,
-                    creado_en
+                    costo
                 )
             )
             conn.commit()
@@ -183,8 +181,7 @@ def update_consulta(
     motivo_consulta: str,
     diagnostico: str,
     estado: str,
-    costo: float,
-    creado_en: str
+    costo: float
 ) -> bool:
     """
     Actualiza los datos de una consulta médica existente.
@@ -199,7 +196,6 @@ def update_consulta(
                 """
                 UPDATE consultas
                 SET
-                   id= %s,
                     paciente_nombre = %s,
                     paciente_dni = %s,
                     medico_nombre = %s,
@@ -207,12 +203,10 @@ def update_consulta(
                     motivo_consulta = %s,
                     diagnostico = %s,
                     estado = %s,
-                    costo = %s,
-                    creado_en = %s
+                    costo = %s
                 WHERE id = %s
                 """,
                 (
-                    consulta_id,
                     paciente_nombre,
                     paciente_dni,
                     medico_nombre,
@@ -221,7 +215,6 @@ def update_consulta(
                     diagnostico,
                     estado,
                     costo,
-                    creado_en,
                     consulta_id
                 )
             )

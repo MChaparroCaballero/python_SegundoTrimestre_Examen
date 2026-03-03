@@ -29,7 +29,6 @@ class ConsultaBase(BaseModel):
     diagnostico: Optional[Annotated[str, Field(max_length=255)]]=None
     estado: Annotated[str, Field(default="pendiente", max_length=100)]
     costo: float = Field(ge=0)
-    creado_en: Optional[datetime] = Field(default_factory=datetime.now)
 
     # --- porque hacemos creado_en opcional? para que en swagger no tenga el usuario que poner la fecha de creacion en un formato especifico, lo hace el sistema ---
 
@@ -121,7 +120,7 @@ class ConsultaDB(BaseModel):
     diagnostico: str | None
     estado: str
     costo: float
-    creado_en: datetime | None
+    creado_en: datetime
 
 
 class ConsultaCreate(ConsultaBase):
@@ -137,6 +136,7 @@ class ConsultaUpdate(ConsultaBase):
 class Consulta(ConsultaBase):
     """Modelo completo de Consulta (con ID y validaciones)."""
     id: int
+    creado_en: datetime
 
 
 # ========================
@@ -247,8 +247,7 @@ def crear_consulta(consulta: ConsultaCreate):
         motivo_consulta=consulta.motivo_consulta,
         diagnostico=consulta.diagnostico,
         estado=consulta.estado,
-        costo=consulta.costo,
-        creado_en=consulta.creado_en
+        costo=consulta.costo
     )
     
     # 2. Validar que la inserción fue exitosa
@@ -302,8 +301,7 @@ def actualizar_consulta(consulta_id: int, consulta: ConsultaUpdate):
         motivo_consulta=consulta.motivo_consulta,
         diagnostico=consulta.diagnostico,
         estado=consulta.estado,
-        costo=consulta.costo,
-        creado_en=consulta.creado_en
+        costo=consulta.costo
     )
     
     # 3. Validar que la actualización fue exitosa

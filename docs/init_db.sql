@@ -36,14 +36,14 @@ USE ConsultasMedicasApp;
 CREATE TABLE `consultas` (
   `id` int(11) NOT NULL,
   `paciente_nombre` varchar(100) NOT NULL,
-  `paciente_dni` varchar(9) NOT NULL,
+  `paciente_dni` varchar(9) NOT NULL UNIQUE,
   `medico_nombre` varchar(100) NOT NULL,
   `fecha_consulta` datetime NOT NULL,
   `motivo_consulta` varchar(255) NOT NULL,
   `diagnostico` varchar(255) DEFAULT NULL,
   `estado` enum('pendiente','en proceso','finalizada','cancelada') NOT NULL DEFAULT 'pendiente',
   `costo` decimal(10,2) NOT NULL,
-  `creado_en` timestamp DEFAULT current_timestamp()
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
