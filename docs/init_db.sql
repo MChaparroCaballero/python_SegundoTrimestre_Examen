@@ -71,6 +71,13 @@ ALTER TABLE `consultas_medicas`
   ADD UNIQUE KEY `paciente_dni` (`paciente_dni`);
 COMMIT;
 
+
+-- AUTO_INCREMENT de la tabla `consultas_medicas`
+--
+ALTER TABLE `consultas_medicas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+COMMIT;
+
 -- =====================================================
 -- Usuario de base de datos para la aplicación consultasmedicas
 -- =====================================================

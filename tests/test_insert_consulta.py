@@ -16,7 +16,7 @@ if __name__ == "__main__":
             fecha_consulta='2025-01-15 10:30:00',
             motivo_consulta='Revisión médica general',
             diagnostico='Paciente en buen estado general',
-            estado='completada',
+            estado='realizada',
             costo=50.00
         )
 
