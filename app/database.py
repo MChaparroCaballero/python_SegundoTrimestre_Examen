@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from dotenv import load_dotenv, find_dotenv
 import os
 import mysql.connector
@@ -12,7 +14,7 @@ def get_connection():
         host=os.getenv("DB_HOST", "localhost"),        # <— corregidos nombres
         user=os.getenv("DB_USER", "root"),
         password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "ConsultasMedicasApp"),
+        database=os.getenv("DB_NAME", "consultasmedicas"),
         port=int(os.getenv("DB_PORT", "3306")),
         charset="utf8mb4"
     )
@@ -43,7 +45,7 @@ def fetch_all_consultas() -> List[Dict[str, Any]]:
                     estado,
                     costo,
                     creado_en
-                FROM consultas;
+                FROM consultas_medicas;
                 """
             )
 
@@ -68,7 +70,7 @@ def insert_consulta(
     medico_nombre: str,
     fecha_consulta: str,
     motivo_consulta: str,
-    diagnostico: str,
+    diagnostico: str | None ,
     estado: str,
     costo: float
 ) -> int:
@@ -83,7 +85,7 @@ def insert_consulta(
         try:
             cur.execute(
                 """
-                INSERT INTO consultas
+                INSERT INTO consultas_medicas
                     (paciente_nombre, paciente_dni, medico_nombre, fecha_consulta, motivo_consulta, diagnostico, estado, costo)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
@@ -98,8 +100,14 @@ def insert_consulta(
                     costo
                 )
             )
+            # 1. Capturamos el ID ANTES del commit
+            nuevo_id = cur.lastrowid
             conn.commit()
-            return cur.lastrowid or 0
+                # 3. Si por lo que sea lastrowid falló, lanzamos error para no devolver 0
+            if nuevo_id == 0:
+                raise Exception("No se pudo obtener el ID de la inserción")
+                
+            return nuevo_id
         finally:
             cur.close()
     finally:
@@ -119,7 +127,7 @@ def delete_consulta(consulta_id: int) -> bool:
         cur = conn.cursor()
         try:
             cur.execute(
-                "DELETE FROM consultas WHERE id = %s",
+                "DELETE FROM consultas_medicas WHERE id = %s",
                 (consulta_id,)
             )
             conn.commit()
@@ -158,7 +166,7 @@ def fetch_consulta_by_id(consulta_id: int) -> Dict[str, Any] | None:
                     estado,
                     costo,
                     creado_en
-                FROM consultas
+                FROM consultas_medicas
                 WHERE id = %s
                 """,
                 (consulta_id,)
@@ -177,9 +185,9 @@ def update_consulta(
     paciente_nombre: str,
     paciente_dni: str,
     medico_nombre: str,
-    fecha_consulta: str,
+    fecha_consulta: datetime,
     motivo_consulta: str,
-    diagnostico: str,
+    diagnostico: str | None ,
     estado: str,
     costo: float
 ) -> bool:
@@ -194,7 +202,7 @@ def update_consulta(
         try:
             cur.execute(
                 """
-                UPDATE consultas
+                UPDATE consultas_medicas
                 SET
                     paciente_nombre = %s,
                     paciente_dni = %s,
@@ -225,3 +233,4 @@ def update_consulta(
     finally:
         if conn:
             conn.close()
+
